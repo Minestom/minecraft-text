@@ -31,6 +31,7 @@ import lombok.Getter;
 import lombok.ToString;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 @Getter(AccessLevel.PROTECTED)
@@ -43,9 +44,13 @@ public final class TextObject {
     private HoverEvent hoverEvent;
     private boolean italic, bold, underlined, obfuscated, strikethrough;
     private List<TextObject> extra = new ArrayList<>();
+    private TextContentType type;
+    private String translateID;
+    private List<TextObject> translateWith = new ArrayList<>();
 
     public TextObject(String text) {
         this.text = text;
+        this.type = TextContentType.PLAIN;
     }
 
     public void setColor(ChatColor color) {
@@ -88,10 +93,35 @@ public final class TextObject {
         this.text = text;
     }
 
+    public void setType(TextContentType type) {
+        this.type = type;
+    }
+
+    public void setTranslateID(String translateID) {
+        this.translateID = translateID;
+    }
+
+    public void addTranslateArguments(List<TextObject> arguments) {
+        this.translateWith.addAll(arguments);
+    }
+
     public JsonObject toJson() {
         JsonObject object = new JsonObject();
 
-        object.addProperty("text", text);
+        switch (type) {
+            case PLAIN:
+                object.addProperty("text", text);
+                break;
+
+            case TRANSLATED:
+                object.addProperty("translate", translateID);
+                JsonArray with = new JsonArray();
+                for(TextObject argument : translateWith) {
+                    with.add(argument.toJson());
+                }
+                object.add("with", with);
+                break;
+        }
 
         if (color != null)
             object.addProperty("color", color.toJsonString());
@@ -123,8 +153,20 @@ public final class TextObject {
     }
 
     public static TextObject fromJson(JsonObject object) {
-        if (object.has("text")) {
+        if (object.has("text") || object.has("translate")) {
             TextObject o = new TextObject(object.get("text").getAsString());
+
+            if(object.has("translate")) {
+                o.setTranslateID(object.get("translate").getAsString());
+                JsonArray array = object.get("with").getAsJsonArray();
+                List<TextObject> translationArguments = new LinkedList<>();
+                for(JsonElement argumentJson : array) {
+                    translationArguments.add(TextObject.fromJson(argumentJson.getAsJsonObject()));
+                }
+                o.addTranslateArguments(translationArguments);
+
+                o.setType(TextContentType.TRANSLATED);
+            }
 
             if (object.has("clickEvent")) {
                 o.setClickEvent(ClickEvent.fromJson(object.get("clickEvent").getAsJsonObject()));

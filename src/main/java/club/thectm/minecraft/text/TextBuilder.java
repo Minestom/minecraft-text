@@ -24,6 +24,7 @@
 package club.thectm.minecraft.text;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public final class TextBuilder {
@@ -107,6 +108,14 @@ public final class TextBuilder {
 
     public static TextBuilder of(String text) {
         return new TextBuilder(new TextObject(text));
+    }
+
+    public static TextBuilder ofTranslation(String translateID, TextObject... arguments) {
+        TextObject object = new TextObject(translateID);
+        object.setType(TextContentType.TRANSLATED);
+        object.setTranslateID(translateID);
+        object.addTranslateArguments(Arrays.asList(arguments));
+        return new TextBuilder(object);
     }
 
     public static TextBuilder empty() {
